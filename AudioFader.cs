@@ -7,7 +7,7 @@ public class AudioFader : MonoBehaviour
     //A nice friendly fader! Make sure to pop this on a gameobject with an AudioSource in order have it fade
     //I toyed with the idea of making this script inherit from AudioSource instead of Monobehaviour, but that seemed like it could be annoying! :)
 
-    [Tooltip("The audio source we're fading")]
+    //The audio source we're fading
     AudioSource audioSource;
 
     [Header("Default fading time")]
