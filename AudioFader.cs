@@ -10,10 +10,14 @@ public class AudioFader : MonoBehaviour
     //The audio source we're fading
     AudioSource audioSource;
 
-    [Header("Default fading time")]
+    [Header("Settings")]
     //Change these numbers to different limits if they aren't what you need! :)
     [Range(0.01f, 5f)]
     public float defaultFadeLength = 1;
+
+    [Range(0.01f, 1f)]
+    [Tooltip("The volume that fading in will fade up to - good if you don't want a source at max volume")]
+    public float fadedInVolume = 1;
 
     private void Start()
     {
@@ -23,50 +27,98 @@ public class AudioFader : MonoBehaviour
         }
     }
 
+    #region Fade in, unpause and fade in
     /// <summary>
-    /// Nice and easy way to fade in
+    /// Nice and easy way to fade in - this does not play the sound, use <seealso cref="Unpause"/> for that.
     /// </summary>
     [ContextMenu("Fade In")]
     public void FadeIn()
     {
-        FadeTo(1);
+        FadeIn(defaultFadeLength);
+    }
+
+    /// <summary>
+    /// Starts the audio before then fading back in
+    /// </summary>
+    [ContextMenu("Unpause then fade in")]
+    public void Unpause()
+    {
+        FadeIn(defaultFadeLength, true);
+    }
+
+    /// <summary>
+    /// Starts the audio before then fading back in, with a custom time that this will take in
+    /// </summary>
+    /// <param name="customFadeLength">The time you'd like it to take when fading out</param>
+    public void Unpause(float customFadeLength)
+    {
+        FadeIn(customFadeLength, true);
     }
 
     /// <summary>
     /// Nice easy way to fade in, but with a custom time that it takes to fade in
     /// </summary>
     /// <param name="customFadeLength">The time you'd like it to take when fading out</param>
-    public void FadeIn(float customFadeLength)
+    /// <param name="changePlayStatus">If true, pause or play the audio on mute or unmute</param>
+    public void FadeIn(float customFadeLength, bool changePlayStatus = false)
     {
-        FadeTo(1, customFadeLength);
+        FadeTo(fadedInVolume, customFadeLength, changePlayStatus);
     }
+    #endregion
 
+
+    #region Fade out, fade out then pause
     /// <summary>
-    /// Nice and easy way to fade out
+    /// Nice and easy way to fade out. This doesn't pause the audio
     /// </summary>
     [ContextMenu("Fade Out")]
     public void FadeOut()
     {
-        FadeTo(0);
+        FadeOut(defaultFadeLength);
     }
 
     /// <summary>
-    /// Nice and easy way to fade out, but with a custom time that it takes to fade out
+    /// Nice and easy way to fade out. This doesn't pause the audio and uses a custom fade length
     /// </summary>
-    /// <param name="customFadeLength">The time you'd like to to take when fading out</param>
+    /// <param name="customFadeLength">The time youy'd like to take when fading out</param>
     public void FadeOut(float customFadeLength)
     {
-        FadeTo(0, customFadeLength);
+        FadeOut(customFadeLength, false);
     }
 
+    /// <summary>
+    /// Fades out the audio, then pauses the source
+    /// </summary>
+    [ContextMenu("Fade then Pause")]
+    public void Pause()
+    {
+        FadeOut(defaultFadeLength, true);
+    }
+
+    /// <summary>
+    /// Nice and easy way to fade out, but with a custom time that it takes to fade out. This doesn't pause the audio.
+    /// </summary>
+    /// <param name="customFadeLength">The time you'd like to to take when fading out</param>
+    /// <param name="changePlayStatus">If true, pause or play the audio on mute or unmute</param>
+    public void FadeOut(float customFadeLength, bool changePlayStatus = false)
+    {
+
+        FadeTo(0, customFadeLength, changePlayStatus);
+    }
+
+    #endregion
+
+
+    #region Main Fade Code
     /// <summary>
     /// Fades your audiosource to <paramref name="targetLevel"/> using the setting for defaultFadeLength set in the inspector
     /// </summary>
     /// <param name="targetLevel">The level you want to set your audio to</param>
-    public void FadeTo(float targetLevel)
+    /// 
+    public void FadeTo(float targetLevel, bool changePlayStatus = false)
     {
         StopAllCoroutines();
-        StartCoroutine(FadeToCo(targetLevel, defaultFadeLength));
+        StartCoroutine(FadeToCo(targetLevel, defaultFadeLength, changePlayStatus));
     }
 
     /// <summary>
@@ -74,10 +126,17 @@ public class AudioFader : MonoBehaviour
     /// </summary>
     /// <param name="targetLevel">The level you want to set your audio to</param>
     /// <param name="customFadeLength">The time it takes to transition to targetLevel</param>
-    public void FadeTo(float targetLevel, float customFadeLength)
+    public void FadeTo(float targetLevel, float customFadeLength, bool changePlayStatus = false)
     {
         StopAllCoroutines();
-        StartCoroutine(FadeToCo(targetLevel, customFadeLength));
+
+        if (customFadeLength <= 0)
+        {
+            Debug.LogWarning("customFadeLength can't have a negative number - that would be in the past! Using defaultFadeLength");
+            customFadeLength = defaultFadeLength;
+        }
+
+        StartCoroutine(FadeToCo(targetLevel, customFadeLength, changePlayStatus));
     }
 
 
@@ -86,9 +145,16 @@ public class AudioFader : MonoBehaviour
     /// </summary>
     /// <param name="targetLevel">The the level to fade to</param>
     /// <param name="fadeLength">The time it takes for it to fade</param>
+    /// <param name="changePlayStatus">If the audio is coming from muted, or will be muted, play or pause it accordingly if this is true. Leave false to leave the audio playing in the background</param>
     /// <returns></returns>
-    IEnumerator FadeToCo(float targetLevel, float fadeLength)
+    IEnumerator FadeToCo(float targetLevel, float fadeLength, bool changePlayStatus = false)
     {
+
+        if(audioSource.volume == 0 && changePlayStatus)
+        {
+            audioSource.Play();
+        }
+
 #if UNITY_EDITOR
         if (Application.isPlaying == false)
         {
@@ -114,6 +180,12 @@ public class AudioFader : MonoBehaviour
 
         audioSource.volume = targetLevel;
 
+        if(audioSource.volume == 0 && changePlayStatus)
+        {
+            audioSource.Pause();
+        }
+
         yield break;
     }
+    #endregion
 }
